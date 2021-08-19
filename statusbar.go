@@ -7,12 +7,21 @@ import (
 	"github.com/mattn/go-runewidth"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 var defStyle tcell.Style
+
+func bar_path() string {
+	usr, _ := user.Current()
+	dir := usr.HomeDir
+	return filepath.Join(dir, "/.bars.yaml")
+}
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
 	for _, c := range str {
@@ -34,65 +43,32 @@ func days_since(s string) int {
 	return int((time.Since(t)).Hours() / (24))
 }
 
-func days_since_string(i int) string {
-	return fmt.Sprintf("%v day(s)", i)
-}
-
-func get_max_length(bars []map[string]interface{}) int {
-	maxLength := 0
-	for _, el := range bars {
-		length := el["length"].(int)
-		name := fmt.Sprintf("%s (%v)", el["name"].(string), length)
-		start_date := el["start_date"].(string)
-		days_since := days_since(start_date)
-		days_since_string := days_since_string(days_since)
-
-		l := len(name)
-		l2 := len(days_since_string)
-		if l > maxLength {
-			maxLength = l
-		}
-		if l2 > maxLength {
-			maxLength = l2
-		}
-	}
-	return maxLength
-
-}
-
 
 func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface{}) {
 
-	green := tcell.StyleDefault.Foreground(tcell.ColorGreenYellow)
+
+	green := tcell.StyleDefault.Foreground(tcell.ColorLawnGreen)
+	yellow := tcell.StyleDefault.Foreground(tcell.Color184)
+	orange := tcell.StyleDefault.Foreground(tcell.ColorDarkOrange)
 	red := tcell.StyleDefault.Foreground(tcell.ColorRed)
 	blue := tcell.StyleDefault.Foreground(tcell.ColorBlue)
-	//purple := tcell.StyleDefault.Foreground(tcell.ColorPurple)
 
-	theme := []string{"█", " ", "|", "|"}
+	theme := []string{"█", " ", "|", "▐"}
 
 	index := 3
-	maxLength := get_max_length(bars)
 	maxBarLength := max_bar_length
 
-	emitStr(s, 2, 2, green, "STATUS BAR")
-
+	emitStr(s, 1, 2, blue, "STATUS BAR")
 
 	for _, el := range bars {
 		length := el["length"].(int)
 
-
-
-		name := fmt.Sprintf("%s (%v)", el["name"].(string), length)
 
 		days_since := days_since(el["start_date"].(string))
 
 		if days_since > maxBarLength {
 			days_since = maxBarLength
 		}
-
-		days_since_string := days_since_string(days_since)
-		l := len(name)
-
 
 		neg_length := maxBarLength-length
 		if neg_length < 0 {
@@ -105,38 +81,116 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 		}
 
 		barString := fmt.Sprintf("\r %s%s%s",
-			" "+name + strings.Repeat(" ", (maxLength + 2) - l),
+			theme[3],
 			strings.Repeat(theme[0], length),
-			strings.Repeat(theme[1], neg_length) + " - / +",
+			" + | -",
 		)
-		l2 := len(days_since_string)
 		errorBarString := fmt.Sprintf("\r %s%s%s",
-			" " + days_since_string + strings.Repeat(" ", (maxLength + 2) - l2),
+			theme[3],
 			strings.Repeat(theme[0], days_since),
 			strings.Repeat(theme[1], neg_day_length),
 		)
-		emitStr(s, 2, index + 1, blue, fmt.Sprintf(barString))
-		emitStr(s, 2, index + 2, red, fmt.Sprintf(errorBarString))
-		emitStr(s, 2, index + 3, red, "\r")
-		index += 3
+		name_string := fmt.Sprintf("\r %s (%v) ", el["name"].(string), length)
+
+		var bar_color = green
+		if days_since <= length {
+			bar_color = green
+		} else {
+			if (days_since - length) < 5 {
+				bar_color = yellow
+			} else if (days_since - length) < 10 {
+				bar_color = orange
+			} else {
+				bar_color = red
+			}
+
+		}
+		emitStr(s, 2, index + 1, bar_color, name_string)
+		emitStr(s, len(name_string) + 1, index + 1, blue, fmt.Sprintf("   %v day(s)", days_since))
+		emitStr(s, 2, index + 2, bar_color, fmt.Sprintf(barString))
+		emitStr(s, 2, index + 3, blue, fmt.Sprintf(errorBarString))
+		index += 4
 	}
 }
+
+func inc_bars_by_index(max_bar_length int, index int,
+	bars []map[string]interface{}) []map[string]interface{}{
+	new_bars := []map[string]interface{}{}
+	for i, el := range bars {
+		inc := el["inc"].(int)
+		if (i + 1) == index {
+			new_length := el["length"].(int) + inc
+			if new_length > max_bar_length {
+				el["length"] = max_bar_length
+			} else {
+				el["length"] = new_length
+			}
+			new_bars = append(new_bars, el)
+		} else {
+			new_bars = append(new_bars, el)
+		}
+	}
+	save_bars(new_bars)
+
+
+	return new_bars
+}
+
+func dec_bars_by_index(max_bar_length int, index int,
+	bars []map[string]interface{}) []map[string]interface{}{
+	new_bars := []map[string]interface{}{}
+	for i, el := range bars {
+		inc := el["inc"].(int)
+		if (i+1) == index {
+			new_length := el["length"].(int) - inc
+			if new_length < 0 {
+				el["length"] = max_bar_length
+			} else {
+				el["length"] = new_length
+			}
+			new_bars = append(new_bars, el)
+		} else {
+			new_bars = append(new_bars, el)
+		}
+	}
+	save_bars(new_bars)
+
+	return new_bars
+}
+
+
+func save_bars(bars []map[string]interface{}) {
+	b := make(map[string]interface{})
+	b["bars"] = bars
+	d, err := yaml.Marshal(b)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	f, err := os.Create(bar_path())
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	f.Write(d)
+}
+
 
 func inc_dec_bars(max_bar_length int, x int, y int,
 	bars []map[string]interface{}) []map[string]interface{}{
 	new_bars := []map[string]interface{}{}
 	for i, el := range bars {
-		if 3 * (i + 1) + 1 == y {
-			if x >  (max_bar_length + get_max_length(bars) + 8){
-				new_length := el["length"].(int) +1
+		if 4 * (i + 1) + 1 == y {
+			length := el["length"].(int)
+			inc := el["inc"].(int)
+			if x <=  (length + 6){
+				new_length := el["length"].(int) + inc
 				if new_length > max_bar_length {
 					el["length"] = max_bar_length
 				} else {
 					el["length"] = new_length
 				}
 				new_bars = append(new_bars, el)
-			} else if x == (max_bar_length + get_max_length(bars) + 5){
-				new_length := el["length"].(int) - 1
+			} else if x > (length + 6){
+				new_length := el["length"].(int) - inc
 				if new_length < 0 {
 					el["length"] = 0
 				} else {
@@ -150,14 +204,15 @@ func inc_dec_bars(max_bar_length int, x int, y int,
 		} else {
 			new_bars = append(new_bars, el)
 		}
-
-
 	}
+
+	save_bars(new_bars)
+
 	return new_bars
 }
 
 func get_bars() ([]map[string]interface{}, error) {
-	yamlFile, err := ioutil.ReadFile("/Users/kprifogle/.bars.yaml")
+	yamlFile, err := ioutil.ReadFile(bar_path())
 
 	type BarConfig struct {
 		Bars []map[string]interface{}
@@ -197,7 +252,7 @@ func main() {
 	s.EnablePaste()
 	s.Clear()
 
-	max_bar_length := 40
+	max_bar_length := 60
 
 	ecnt := 0
 
@@ -209,10 +264,12 @@ func main() {
 	}
 
 	render_bars(s, max_bar_length, bars)
+	s.Show()
+
 
 	for {
 		ev := s.PollEvent()
-		s.Show()
+
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape {
@@ -225,12 +282,12 @@ func main() {
 		case *tcell.EventMouse:
 			x, y := ev.Position()
 			switch ev.Buttons() {
-			case tcell.Button1:
+			case tcell.Button1, tcell.Button2, tcell.Button3:
 				s.Clear()
 				new_bars := inc_dec_bars(max_bar_length, x, y, bars)
 				render_bars(s, max_bar_length, new_bars)
-				s.Show()
 				s.Sync()
+				s.Show()
 			}
 		}
 
