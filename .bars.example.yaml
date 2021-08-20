@@ -1,0 +1,37 @@
+bars:
+- inc: 3
+  length: 3
+  name: climbing
+  start_date: "2021-08-15"
+- inc: 2
+  length: 6
+  name: bench press
+  start_date: "2021-08-15"
+- inc: 2
+  length: 6
+  name: curl (1 set)
+  start_date: "2021-08-15"
+- inc: 2
+  length: 0
+  name: running (1 mile)
+  start_date: "2021-08-15"
+- inc: 2
+  length: 0
+  name: squats (1 set)
+  start_date: "2021-08-15"
+- inc: 3
+  length: 0
+  name: hangboard/pullup (1 set)
+  start_date: "2021-08-15"
+- inc: 2
+  length: 0
+  name: read (10 pages)
+  start_date: "2021-08-15"
+- inc: 1
+  length: 4
+  name: water (1 bottle)
+  start_date: "2021-08-15"
+- inc: 3
+  length: 0
+  name: meditate (10 mins)
+  start_date: "2021-08-15"
