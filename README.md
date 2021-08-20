@@ -1,7 +1,7 @@
 
 # Statusbar
 
-![Screenshot](https://github.com/kyprifog/statusbar/blob/master/images/screenshot.png)
+![Screenshot](https://github.com/kyprifog/statusbar/blob/master/images/screenshot1.png)
 
 Statusbar is a tool for tracking your progress in periodic tasks.
 
