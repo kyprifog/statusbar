@@ -267,6 +267,7 @@ func main() {
 	s.Show()
 
 
+	go func() {
 	for {
 		ev := s.PollEvent()
 
@@ -284,11 +285,23 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.Button1, tcell.Button2, tcell.Button3:
 				s.Clear()
+				bars, _ := get_bars()
 				new_bars := inc_dec_bars(max_bar_length, x, y, bars)
 				render_bars(s, max_bar_length, new_bars)
 				s.Sync()
 				s.Show()
 			}
+		}
+	}}()
+	t := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-t.C:
+			s.Clear()
+			new_bars, _ := get_bars()
+			render_bars(s, max_bar_length, new_bars)
+			s.Sync()
+			s.Show()
 		}
 
 	}
