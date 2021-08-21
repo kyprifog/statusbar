@@ -255,6 +255,7 @@ func main() {
 	max_bar_length := 60
 
 	ecnt := 0
+	last_press := time.Now().AddDate(-1, 0, 0)
 
 	bars, err := get_bars()
 	if err != nil {
@@ -285,8 +286,13 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.Button1, tcell.Button2, tcell.Button3:
 				s.Clear()
-				bars, _ := get_bars()
-				new_bars := inc_dec_bars(max_bar_length, x, y, bars)
+				new_bars, _ := get_bars()
+				if time.Now().Sub(last_press).Seconds() > 0.5 {
+					new_bars = inc_dec_bars(max_bar_length, x, y, bars)
+					last_press = time.Now()
+				} else {
+					new_bars, _ = get_bars()
+				}
 				render_bars(s, max_bar_length, new_bars)
 				s.Sync()
 				s.Show()
