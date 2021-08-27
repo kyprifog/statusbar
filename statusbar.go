@@ -136,28 +136,6 @@ func inc_bars_by_index(max_bar_length int, index int,
 	return new_bars
 }
 
-func dec_bars_by_index(max_bar_length int, index int,
-	bars []map[string]interface{}) []map[string]interface{}{
-	new_bars := []map[string]interface{}{}
-	for i, el := range bars {
-		inc := el["inc"].(int)
-		if (i+1) == index {
-			new_length := el["length"].(int) - inc
-			if new_length < 0 {
-				el["length"] = max_bar_length
-			} else {
-				el["length"] = new_length
-			}
-			new_bars = append(new_bars, el)
-		} else {
-			new_bars = append(new_bars, el)
-		}
-	}
-	save_bars(new_bars)
-
-	return new_bars
-}
-
 
 func save_bars(bars []map[string]interface{}) {
 	b := make(map[string]interface{})
@@ -288,7 +266,7 @@ func main() {
 				s.Clear()
 				new_bars, _ := get_bars()
 				if time.Now().Sub(last_press).Seconds() > 0.5 {
-					new_bars = inc_dec_bars(max_bar_length, x, y, bars)
+					new_bars = inc_dec_bars(max_bar_length, x, y, new_bars)
 					last_press = time.Now()
 				} else {
 					new_bars, _ = get_bars()
@@ -309,7 +287,6 @@ func main() {
 			s.Sync()
 			s.Show()
 		}
-
 	}
 
 
