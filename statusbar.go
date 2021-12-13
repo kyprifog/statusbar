@@ -65,7 +65,7 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 
 		days_since := days_since(el["start_date"].(string))
 
-		days_since = days_since % maxBarLength
+		day_bar := days_since % maxBarLength
 		overflow := length / maxBarLength
 		bar_length := length % maxBarLength
 
@@ -76,7 +76,7 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 		)
 		errorBarString := fmt.Sprintf("\r %s%s",
 			theme[3],
-			strings.Repeat(theme[0], days_since),
+			strings.Repeat(theme[0], day_bar),
 		)
 		name_string := fmt.Sprintf("\r %s (%v) ", el["name"].(string), length)
 
