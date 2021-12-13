@@ -3,7 +3,8 @@
 
 ![Screenshot](https://github.com/kyprifog/statusbar/blob/master/images/screenshot1.png)
 
-Statusbar is a tool for tracking your progress in periodic tasks.
+Statusbar is a tool for tracking your progress in periodic tasks powered by ![tcell](https://github.com/gdamore/tcell)
+
 
 # Usage
 
