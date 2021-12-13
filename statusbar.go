@@ -46,14 +46,13 @@ func days_since(s string) int {
 
 func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface{}) {
 
-
 	green := tcell.StyleDefault.Foreground(tcell.ColorLawnGreen)
 	yellow := tcell.StyleDefault.Foreground(tcell.Color184)
 	orange := tcell.StyleDefault.Foreground(tcell.ColorDarkOrange)
 	red := tcell.StyleDefault.Foreground(tcell.ColorRed)
 	blue := tcell.StyleDefault.Foreground(tcell.ColorBlue)
 
-	theme := []string{"█", " ", "|", "▐"}
+	theme := []string{"█", " ", "|", "▐", "▀", "▄" }
 
 	index := 3
 	maxBarLength := max_bar_length
@@ -66,29 +65,18 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 
 		days_since := days_since(el["start_date"].(string))
 
-		if days_since > maxBarLength {
-			days_since = maxBarLength
-		}
-
-		neg_length := maxBarLength-length
-		if neg_length < 0 {
-			neg_length = maxBarLength
-		}
-
-		neg_day_length := maxBarLength-days_since
-		if neg_day_length < 0 {
-			neg_length = maxBarLength
-		}
+		days_since = days_since % maxBarLength
+		overflow := length / maxBarLength
+		bar_length := length % maxBarLength
 
 		barString := fmt.Sprintf("\r %s%s%s",
 			theme[3],
-			strings.Repeat(theme[0], length),
+			strings.Repeat(theme[0], bar_length),
 			" + | -",
 		)
-		errorBarString := fmt.Sprintf("\r %s%s%s",
+		errorBarString := fmt.Sprintf("\r %s%s",
 			theme[3],
 			strings.Repeat(theme[0], days_since),
-			strings.Repeat(theme[1], neg_day_length),
 		)
 		name_string := fmt.Sprintf("\r %s (%v) ", el["name"].(string), length)
 
@@ -105,37 +93,17 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 			}
 
 		}
+		day_string := fmt.Sprintf("   %v day(s)", days_since)
+
+		medal_string := strings.Repeat(" " + theme[4], overflow)
 		emitStr(s, 2, index + 1, bar_color, name_string)
-		emitStr(s, len(name_string) + 1, index + 1, blue, fmt.Sprintf("   %v day(s)", days_since))
+		emitStr(s, len(name_string) + 1, index + 1, blue, day_string)
+		emitStr(s, len(name_string) + len(day_string) + 1, index + 1, yellow, medal_string)
 		emitStr(s, 2, index + 2, bar_color, fmt.Sprintf(barString))
 		emitStr(s, 2, index + 3, blue, fmt.Sprintf(errorBarString))
 		index += 4
 	}
 }
-
-func inc_bars_by_index(max_bar_length int, index int,
-	bars []map[string]interface{}) []map[string]interface{}{
-	new_bars := []map[string]interface{}{}
-	for i, el := range bars {
-		inc := el["inc"].(int)
-		if (i + 1) == index {
-			new_length := el["length"].(int) + inc
-			if new_length > max_bar_length {
-				el["length"] = max_bar_length
-			} else {
-				el["length"] = new_length
-			}
-			new_bars = append(new_bars, el)
-		} else {
-			new_bars = append(new_bars, el)
-		}
-	}
-	save_bars(new_bars)
-
-
-	return new_bars
-}
-
 
 func save_bars(bars []map[string]interface{}) {
 	b := make(map[string]interface{})
@@ -158,16 +126,13 @@ func inc_dec_bars(max_bar_length int, x int, y int,
 	for i, el := range bars {
 		if 4 * (i + 1) + 1 == y {
 			length := el["length"].(int)
+			bar_length := length % max_bar_length
 			inc := el["inc"].(int)
-			if x <=  (length + 6){
+			if x <=  (bar_length + 6){
 				new_length := el["length"].(int) + inc
-				if new_length > max_bar_length {
-					el["length"] = max_bar_length
-				} else {
-					el["length"] = new_length
-				}
+				 el["length"] = new_length
 				new_bars = append(new_bars, el)
-			} else if x > (length + 6){
+			} else if x > (bar_length + 6){
 				new_length := el["length"].(int) - inc
 				if new_length < 0 {
 					el["length"] = 0
@@ -230,7 +195,7 @@ func main() {
 	s.EnablePaste()
 	s.Clear()
 
-	max_bar_length := 60
+	max_bar_length := 30
 
 	ecnt := 0
 	last_press := time.Now().AddDate(-1, 0, 0)
