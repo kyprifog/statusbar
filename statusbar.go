@@ -242,7 +242,7 @@ func main() {
 			}
 		}
 	}}()
-	t := time.NewTicker(time.Second)
+	t := time.NewTicker(time.Second * 30)
 	for {
 		select {
 		case <-t.C:
