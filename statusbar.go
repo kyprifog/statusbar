@@ -20,7 +20,8 @@ var defStyle tcell.Style
 func bar_path() string {
 	usr, _ := user.Current()
 	dir := usr.HomeDir
-	return filepath.Join(dir, "/.bars.yaml")
+  args := os.Args[1]
+  return filepath.Join(dir, "/", args)
 }
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
@@ -54,10 +55,10 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 
 	theme := []string{"█", " ", "|", "▐", "▀", "▄" }
 
-	index := 3
+	index := 1
 	maxBarLength := max_bar_length
 
-	emitStr(s, 1, 2, blue, "STATUS BAR")
+	// emitStr(s, 1, 2, blue, "STATUS BAR")
 
 	for _, el := range bars {
 		length := el["length"].(int)
