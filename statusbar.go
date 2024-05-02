@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,10 +17,8 @@ import (
 var defStyle tcell.Style
 
 func bar_path() string {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-  args := os.Args[1]
-  return filepath.Join(dir, "/", args)
+	args := os.Args[1]
+  return filepath.Join(args)
 }
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
@@ -125,7 +122,7 @@ func inc_dec_bars(max_bar_length int, x int, y int,
 	bars []map[string]interface{}) []map[string]interface{}{
 	new_bars := []map[string]interface{}{}
 	for i, el := range bars {
-		if 4 * (i + 1) + 1 == y {
+		if 4 * (i + 1) - 1 == y {
 			length := el["length"].(int)
 			bar_length := length % max_bar_length
 			inc := el["inc"].(int)
