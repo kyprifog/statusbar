@@ -59,6 +59,7 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 
 	for _, el := range bars {
 		length := el["length"].(int)
+		inc := el["inc"].(int)
 
 
 		days_since := days_since(el["start_date"].(string))
@@ -91,12 +92,15 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 			}
 
 		}
+		inc_string := fmt.Sprintf(" (+-%d)", inc)
 		day_string := fmt.Sprintf("   %v day(s)", days_since)
 
 		medal_string := strings.Repeat(" " + theme[4], overflow)
 		emitStr(s, 2, index + 1, bar_color, name_string)
-		emitStr(s, len(name_string) + 1, index + 1, blue, day_string)
-		emitStr(s, len(name_string) + len(day_string) + 1, index + 1, yellow, medal_string)
+		emitStr(s, len(name_string) + 1, index + 1, bar_color, inc_string)
+
+		emitStr(s, len(inc_string) + len(name_string) + 1, index + 1, blue, day_string)
+		emitStr(s, len(inc_string) + len(name_string) + len(day_string) + 1, index + 1, yellow, medal_string)
 		emitStr(s, 2, index + 2, bar_color, fmt.Sprintf(barString))
 		emitStr(s, 2, index + 3, blue, fmt.Sprintf(errorBarString))
 		index += 4
