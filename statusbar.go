@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"sort"
 )
 
 var defStyle tcell.Style
@@ -41,6 +42,55 @@ func days_since(s string) int {
 	return int((time.Since(t)).Hours() / (24))
 }
 
+func add_day(s string) string {
+	const layout = "2006-01-02"
+	t, _ := time.Parse(layout, s)
+	newT := t.AddDate(0, 0, 1)
+	return newT.Format(layout)
+}
+
+func sub_day(s string) string {
+	const layout = "2006-01-02"
+	t, _ := time.Parse(layout, s)
+	newT := t.AddDate(0, 0, -1)
+	return newT.Format(layout)
+}
+
+func insert(a []map[string]interface{}, index int, value map[string]interface{}) []map[string]interface{} {
+		if len(a) == index { 
+				return append(a, value)
+		}
+		a = append(a[:index+1], a[index:]...) 
+		a[index] = value
+		return a
+}
+
+func sort_bars(bars []map[string]interface{}) []map[string]interface{} {
+	// Define a custom comparison function
+	sort.Slice(bars, func(i, j int) bool {
+		// Get the necessary values for the first element
+		startDateI := bars[i]["start_date"].(string)
+		lengthI := bars[i]["length"].(int)
+		nameI := bars[i]["name"].(string)
+
+		// Get the necessary values for the second element
+		startDateJ := bars[j]["start_date"].(string)
+		lengthJ := bars[j]["length"].(int)
+		nameJ := bars[j]["name"].(string)
+
+		// Calculate the sorting key
+		diffI := days_since(startDateI) - lengthI
+		diffJ := days_since(startDateJ) - lengthJ
+
+		// Compare the sorting keys
+		if diffI == diffJ {
+			return nameI < nameJ
+		}
+		return diffI > diffJ
+	})
+
+	return bars
+}
 
 func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface{}) {
 
@@ -52,15 +102,14 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 
 	theme := []string{"█", " ", "|", "▐", "▀", "▄" }
 
-	index := 1
+	index := 0
 	maxBarLength := max_bar_length
 
-	// emitStr(s, 1, 2, blue, "STATUS BAR")
+	emitStr(s, 1, index, blue, "Cheat + | -")
 
 	for _, el := range bars {
 		length := el["length"].(int)
 		inc := el["inc"].(int)
-
 
 		days_since := days_since(el["start_date"].(string))
 
@@ -94,15 +143,14 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 		}
 		inc_string := fmt.Sprintf(" (+-%d)", inc)
 		day_string := fmt.Sprintf("   %v day(s)", days_since)
-
 		medal_string := strings.Repeat(" " + theme[4], overflow)
-		emitStr(s, 2, index + 1, bar_color, name_string)
-		emitStr(s, len(name_string) + 1, index + 1, bar_color, inc_string)
+		emitStr(s, 2, index+2, bar_color, name_string)
+		emitStr(s, len(name_string) + 1,index+2, bar_color, inc_string)
 
-		emitStr(s, len(inc_string) + len(name_string) + 1, index + 1, blue, day_string)
-		emitStr(s, len(inc_string) + len(name_string) + len(day_string) + 1, index + 1, yellow, medal_string)
-		emitStr(s, 2, index + 2, bar_color, fmt.Sprintf(barString))
-		emitStr(s, 2, index + 3, blue, fmt.Sprintf(errorBarString))
+		emitStr(s, len(inc_string) + len(name_string) + 1, index+2, blue, day_string)
+		emitStr(s, len(inc_string) + len(name_string) + len(day_string) + 1, index+2, yellow, medal_string)
+		emitStr(s, 2, index + 3, bar_color, fmt.Sprintf(barString))
+		emitStr(s, 2, index + 4, blue, fmt.Sprintf(errorBarString))
 		index += 4
 	}
 }
@@ -125,32 +173,47 @@ func save_bars(bars []map[string]interface{}) {
 func inc_dec_bars(max_bar_length int, x int, y int,
 	bars []map[string]interface{}) []map[string]interface{}{
 	new_bars := []map[string]interface{}{}
-	for i, el := range bars {
-		if 4 * (i + 1) - 1 == y {
-			length := el["length"].(int)
-			bar_length := length % max_bar_length
-			inc := el["inc"].(int)
-			if x <=  (bar_length + 6){
-				new_length := el["length"].(int) + inc
-				 el["length"] = new_length
-				new_bars = append(new_bars, el)
-			} else if x > (bar_length + 6){
-				new_length := el["length"].(int) - inc
-				if new_length < 0 {
-					el["length"] = 0
-				} else {
-					el["length"] = new_length
-				}
-
-				new_bars = append(new_bars, el)
-			} else {
+	if (y == 0) {
+		if (x > 9) {
+			for _, el := range bars{
+				date:= el["start_date"].(string)
+				el["start_date"] = add_day(date)
 				new_bars = append(new_bars, el)
 			}
 		} else {
-			new_bars = append(new_bars, el)
+			for _, el := range bars{
+				date:= el["start_date"].(string)
+				el["start_date"] = sub_day(date)
+				new_bars = append(new_bars, el)
+			}
+		}
+	} else {
+		for i, el := range bars {
+			if 4 * (i + 1) - 1 == y {
+				length := el["length"].(int)
+				bar_length := length % max_bar_length
+				inc := el["inc"].(int)
+				if x <=  (bar_length + 6){
+					new_length := el["length"].(int) + inc
+					 el["length"] = new_length
+					new_bars = append(new_bars, el)
+				} else if x > (bar_length + 6){
+					new_length := el["length"].(int) - inc
+					if new_length < 0 {
+						el["length"] = 0
+					} else {
+						el["length"] = new_length
+					}
+
+					new_bars = append(new_bars, el)
+				} else {
+					new_bars = append(new_bars, el)
+				}
+			} else {
+				new_bars = append(new_bars, el)
+			}
 		}
 	}
-
 	save_bars(new_bars)
 
 	return new_bars
@@ -199,10 +262,11 @@ func main() {
 
 	max_bar_length := 30
 
+	bars, err := get_bars()
+
 	ecnt := 0
 	last_press := time.Now().AddDate(-1, 0, 0)
 
-	bars, err := get_bars()
 	if err != nil {
 		s.Fini()
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -244,12 +308,14 @@ func main() {
 			}
 		}
 	}}()
-	t := time.NewTicker(time.Second * 30)
+	t := time.NewTicker(time.Second * 1)
 	for {
 		select {
 		case <-t.C:
 			s.Clear()
 			new_bars, _ := get_bars()
+			sorted_bars := sort_bars(new_bars)
+			save_bars(sorted_bars)
 			render_bars(s, max_bar_length, new_bars)
 			s.Sync()
 			s.Show()
