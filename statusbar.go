@@ -315,8 +315,8 @@ func main() {
 			new_bars, _ := get_bars()
 			sorted_bars := sort_bars(new_bars)
 			save_bars(sorted_bars)
-			render_bars(s, max_bar_length, new_bars)
 			s.Clear()
+			render_bars(s, max_bar_length, new_bars)
 			s.Sync()
 			s.Show()
 		}
