@@ -16,10 +16,11 @@ import (
 )
 
 var defStyle tcell.Style
+var cheatDays int
 
 func bar_path() string {
 	args := os.Args[1]
-  return filepath.Join(args)
+	return filepath.Join(args)
 }
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
@@ -105,7 +106,8 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 	index := 0
 	maxBarLength := max_bar_length
 
-	emitStr(s, 1, index, blue, "Cheat + | -")
+	cheatString := fmt.Sprintf("Cheat + | -%s", strings.Repeat(" " + theme[4], cheatDays))
+	emitStr(s, 1, index, blue, cheatString)
 
 	for _, el := range bars {
 		length := el["length"].(int)
@@ -139,26 +141,25 @@ func render_bars(s tcell.Screen, max_bar_length int, bars []map[string]interface
 			} else {
 				bar_color = red
 			}
-
 		}
 		inc_string := fmt.Sprintf(" (+-%d)", inc)
 		day_string := fmt.Sprintf("   %v day(s)", days_since)
 		medal_string := strings.Repeat(" " + theme[4], overflow)
 		emitStr(s, 2, index+2, bar_color, name_string)
-		emitStr(s, len(name_string) + 1,index+2, bar_color, inc_string)
-
-		emitStr(s, len(inc_string) + len(name_string) + 1, index+2, blue, day_string)
-		emitStr(s, len(inc_string) + len(name_string) + len(day_string) + 1, index+2, yellow, medal_string)
-		emitStr(s, 2, index + 3, bar_color, fmt.Sprintf(barString))
-		emitStr(s, 2, index + 4, blue, fmt.Sprintf(errorBarString))
+		emitStr(s, len(name_string)+1, index+2, bar_color, inc_string)
+		emitStr(s, len(inc_string)+len(name_string)+1, index+2, blue, day_string)
+		emitStr(s, len(inc_string)+len(name_string)+len(day_string)+1, index+2, yellow, medal_string)
+		emitStr(s, 2, index+3, bar_color, fmt.Sprintf(barString))
+		emitStr(s, 2, index+4, blue, fmt.Sprintf(errorBarString))
 		index += 4
 	}
 }
 
 func save_bars(bars []map[string]interface{}) {
-	b := make(map[string]interface{})
-	b["bars"] = bars
-	d, err := yaml.Marshal(b)
+	data := make(map[string]interface{})
+	data["bars"] = bars
+	data["cheat_days"] = cheatDays
+	d, err := yaml.Marshal(data)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -169,42 +170,44 @@ func save_bars(bars []map[string]interface{}) {
 	f.Write(d)
 }
 
-
-func inc_dec_bars(max_bar_length int, x int, y int,
-	bars []map[string]interface{}) []map[string]interface{}{
+func inc_dec_bars(max_bar_length int, x int, y int, bars []map[string]interface{}) []map[string]interface{} {
 	new_bars := []map[string]interface{}{}
-	if (y == 0) {
-		if (x > 9) {
-			for _, el := range bars{
-				date:= el["start_date"].(string)
-				el["start_date"] = add_day(date)
-				new_bars = append(new_bars, el)
-			}
-		} else {
-			for _, el := range bars{
-				date:= el["start_date"].(string)
+	if y == 0 {
+		if x > 9 {
+			for _, el := range bars {
+				date := el["start_date"].(string)
 				el["start_date"] = sub_day(date)
 				new_bars = append(new_bars, el)
 			}
+			if cheatDays > 0 { // Ensure cheatDays doesn't go below 0
+				cheatDays--
+			}
+
+		} else {
+			for _, el := range bars {
+				date := el["start_date"].(string)
+				el["start_date"] = add_day(date)
+				new_bars = append(new_bars, el)
+			}
+			cheatDays++
 		}
 	} else {
 		for i, el := range bars {
-			if 4 * (i + 1) - 1 == y {
+			if 4*(i+1)-1 == y {
 				length := el["length"].(int)
 				bar_length := length % max_bar_length
 				inc := el["inc"].(int)
-				if x <=  (bar_length + 6){
+				if x <= (bar_length + 6) {
 					new_length := el["length"].(int) + inc
-					 el["length"] = new_length
+					el["length"] = new_length
 					new_bars = append(new_bars, el)
-				} else if x > (bar_length + 6){
+				} else if x > (bar_length + 6) {
 					new_length := el["length"].(int) - inc
 					if new_length < 0 {
 						el["length"] = 0
 					} else {
 						el["length"] = new_length
 					}
-
 					new_bars = append(new_bars, el)
 				} else {
 					new_bars = append(new_bars, el)
@@ -215,7 +218,6 @@ func inc_dec_bars(max_bar_length int, x int, y int,
 		}
 	}
 	save_bars(new_bars)
-
 	return new_bars
 }
 
@@ -223,7 +225,8 @@ func get_bars() ([]map[string]interface{}, error) {
 	yamlFile, err := ioutil.ReadFile(bar_path())
 
 	type BarConfig struct {
-		Bars []map[string]interface{}
+		Bars      []map[string]interface{}
+		CheatDays int `yaml:"cheat_days"`
 	}
 
 	bars := BarConfig{}
@@ -231,13 +234,12 @@ func get_bars() ([]map[string]interface{}, error) {
 		err = yaml.Unmarshal(yamlFile, &bars)
 	}
 
+	cheatDays = bars.CheatDays
+
 	return bars.Bars, err
 }
 
-
-
 func main() {
-
 	s, e := tcell.NewScreen()
 
 	encoding.Register()
@@ -276,38 +278,38 @@ func main() {
 	render_bars(s, max_bar_length, bars)
 	s.Show()
 
-
 	go func() {
-	for {
-		ev := s.PollEvent()
+		for {
+			ev := s.PollEvent()
 
-		switch ev := ev.(type) {
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape {
-				ecnt++
-				if ecnt > 1 {
-					s.Fini()
-					os.Exit(0)
+			switch ev := ev.(type) {
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape {
+					ecnt++
+					if ecnt > 1 {
+						s.Fini()
+						os.Exit(0)
+					}
 				}
-			}
-		case *tcell.EventMouse:
-			x, y := ev.Position()
-			switch ev.Buttons() {
-			case tcell.Button1, tcell.Button2, tcell.Button3:
-				s.Clear()
-				new_bars, _ := get_bars()
-				if time.Now().Sub(last_press).Seconds() > 0.5 {
-					new_bars = inc_dec_bars(max_bar_length, x, y, new_bars)
-					last_press = time.Now()
-				} else {
-					new_bars, _ = get_bars()
+			case *tcell.EventMouse:
+				x, y := ev.Position()
+				switch ev.Buttons() {
+				case tcell.Button1, tcell.Button2, tcell.Button3:
+					s.Clear()
+					new_bars, _ := get_bars()
+					if time.Now().Sub(last_press).Seconds() > 0.5 {
+						new_bars = inc_dec_bars(max_bar_length, x, y, new_bars)
+						last_press = time.Now()
+					} else {
+						new_bars, _ = get_bars()
+					}
+					render_bars(s, max_bar_length, new_bars)
+					s.Sync()
+					s.Show()
 				}
-				render_bars(s, max_bar_length, new_bars)
-				s.Sync()
-				s.Show()
 			}
 		}
-	}}()
+	}()
 	t := time.NewTicker(time.Second * 1)
 	for {
 		select {
@@ -321,6 +323,4 @@ func main() {
 			s.Show()
 		}
 	}
-
-
 }
