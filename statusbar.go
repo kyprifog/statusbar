@@ -310,7 +310,7 @@ func main() {
 			}
 		}
 	}()
-	t := time.NewTicker(time.Second * 1)
+	t := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-t.C:
